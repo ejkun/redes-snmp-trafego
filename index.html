@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Tráfego na Rede via SNMP</title>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+        <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
+        <link rel="stylesheet" href="./index.css">
+        <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.bundle.min.js"></script>
+        <script
+            src="https://code.jquery.com/jquery-3.2.1.min.js"
+            integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+            crossorigin="anonymous"></script>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+        <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header mdl-layout--no-drawer-button">
+            <header class="mdl-layout__header">
+                <div class="mdl-layout__header-row">
+                    <!-- Title -->
+                    <span class="mdl-layout-title">Tráfego na Rede</span>
+                    <!-- Add spacer, to align navigation to the right -->
+                    <div class="mdl-layout-spacer"></div>
+                    <!-- Navigation. We hide it in small screens. -->
+                </div>
+            </header>
+            <main class="mdl-layout__content">
+                <div class="page-content">
+                    <div class="mdl-grid">
+                        <div id="content" class="mdl-cell mdl-cell--8-col mdl-cell--12-col-phone mdl-cell--12-col-tablet mdl-shadow--4dp mdl-cell--2-offset-desktop mdl-card">
+                            <div class="mdl-card__title">
+                                <h2 class="mdl-card__title-text">Gráfico de Tráfego (via SNMP)</h2>
+                            </div>
+                            <div class="mdl-card__media">
+                                <canvas id="chart" height=400 width=840></canvas>
+                            <div class="mdl-card__supporting-text">
+                                <p>
+                                Versão: SNMPv2
+                                </p>
+                                <p>
+                                Servidor: snmp.live.gambitcommunications.com
+                                </p>
+                                <p>
+                                Comunidade: public
+                                </p>
+                            </div>
+                            <div class="mdl-card__actions">
+                                <button id="stop" class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent">
+                                    Parar
+                                </button>
+                                <button id="reset" class="mdl-button mdl-js-button mdl-button--raised mdl-button--accent">
+                                    Reiniciar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </body>
+    <script type="text/javascript">
+        var labels = [];
+        var lastSec = 0;
+        var dataIn = [];
+        var dataOut = [];
+        var ctx = document.getElementById("chart").getContext('2d');
+        var myChart;
+        var oldIn;
+        var oldOut;
+
+        $.post("process.php", function(data) {
+            data = JSON.parse(data);
+            oldIn = parseInt(data.in);
+            oldOut = parseInt(data.out);
+        });
+
+        update();
+
+        var t = setInterval(update, 2000);
+
+        $(function() {
+            $("#stop").click(function () {
+                clearInterval(t);
+                $("#stop").prop('disabled', true);
+            });
+
+            $("#reset").click(function() {
+                clearInterval(t);
+
+                labels = [];
+                lastSec = 0;
+                dataIn = [];
+                dataOut = [];
+
+                $.post("process.php", function(data) {
+                    data = JSON.parse(data);
+                    oldIn = parseInt(data.in);
+                    oldOut = parseInt(data.out);
+                });
+
+                update();
+
+                t = setInterval(update, 2000);
+
+                $("#stop").prop('disabled', false);
+            });
+        });
+
+        function update() {
+            $.post("process.php", function(data) {
+                data = JSON.parse(data);
+                newIn = parseInt(data.in);
+                newOut = parseInt(data.out);
+                dataIn.push(newIn - oldIn);
+                dataOut.push(newOut - oldOut);
+                oldIn = newIn;
+                oldOut = newOut;
+                labels.push(""+lastSec+"sec");
+                lastSec += 2;
+                if (dataIn.length > 10) {
+                    dataIn.shift();
+                    dataOut.shift();
+                    labels.shift();
+                }
+                myChart = createChart(ctx, labels, dataIn, dataOut)
+            });
+        }
+
+        function createChart(element, labels, dataIn, dataOut) {
+            return new Chart(element, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Entrada',
+                            data: dataIn,
+                            fill:false,
+                            borderColor: "red",
+                            cubicInterpolationMode: 'monotone'
+                        },
+                        {
+                            label: 'Saída',
+                            data: dataOut,
+                            fill:false,
+                            borderColor: "blue",
+                            cubicInterpolationMode: 'monotone'
+                        }
+                    ],
+                },
+                options: {
+                    animation: false,
+                    scales: {
+                        yAxes: [
+                            {
+                                ticks: {
+                                    suggestedMin: 300,
+                                    suggestedMax: 500
+                                },
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Número de Pacotes'
+                                }
+                            }
+                        ],
+                        xAxes: [
+                            {
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Tempo'
+                                }
+                            }
+                        ]
+                    },
+                    layout: {
+                        padding: {
+                            left: 20,
+                            right: 20
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</html>
