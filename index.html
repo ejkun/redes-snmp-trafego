@@ -43,6 +43,11 @@
                                 <p>
                                 Comunidade: public
                                 </p>
+                                <p>Nome do Sistema: <span id="sysName"></span></p>
+                                <p>Descrição do Sistema: <span id="sysDescr"></span></p>
+                                <p>ObjectId: <span id="sysObjectId"></span></p>
+                                <p>Tempo Acordado: <span id="sysUpTimeInstance"></span></p>
+                                <p>Contato: <span id="sysContact"></span></p>
                             </div>
                             <div class="mdl-card__actions">
                                 <button id="stop" class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored">
@@ -59,6 +64,18 @@
         </div>
     </body>
     <script type="text/javascript">
+
+        $(function() {
+            $.post("system.php", function(data) {
+                data = JSON.parse(data);
+                $.each(data, function (key, info) {
+                    console.log(key);
+                    console.log($("#"+key));
+                    $("#"+key).text(info);
+                });
+            });
+        });
+
         var labels = [];
         var lastSec = 0;
         var dataIn = [];
